@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AA Fix – Xiaomi Android Auto Sorun Giderici</title>
+<meta name="description" content="Xiaomi (MIUI/HyperOS) Android Auto bağlantı, kopma ve çökme sorunları için interaktif sorun giderme sihirbazı.">
+<meta name="theme-color" content="#FF6D00">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root {
+    --orange: #FF6D00;
+    --orange-dark: #C84E00;
+    --bg: #FFF8F5;
+    --surface: #FFFFFF;
+    --text: #1B1B1B;
+    --muted: #5F6368;
+    --ok: #2E7D32;
+    --warn: #F9A825;
+    --err: #C62828;
+    --border: #E8E0DA;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121212; --surface: #1E1E1E; --text: #F2F2F2; --muted: #AAAAAA; --border: #333333;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.55;
+    padding-bottom: 60px;
+  }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--orange); color: #fff;
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { font-size: 1.2rem; }
+  header small { font-weight: 400; opacity: .9; display: block; font-size: .72rem; }
+  main { max-width: 720px; margin: 0 auto; padding: 16px; }
+  section { margin-bottom: 24px; }
+  h2 { font-size: 1.15rem; margin-bottom: 10px; }
+  h3 { font-size: 1rem; margin-bottom: 6px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
+  }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: .75rem; font-weight: 600; color: #fff; background: var(--orange);
+  }
+  .badge.ok { background: var(--ok); }
+  .badge.warn { background: var(--warn); }
+  .badge.err { background: var(--err); }
+  .choice {
+    display: block; width: 100%; text-align: left;
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: var(--radius); padding: 14px; margin-bottom: 10px;
+    font-size: 1rem; color: var(--text); cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .choice:hover { border-color: var(--orange); }
+  .choice.selected { border-color: var(--orange); background: #FFF1E6; }
+  @media (prefers-color-scheme: dark) { .choice.selected { background: #3A2415; } }
+  .choice small { display: block; color: var(--muted); font-size: .82rem; }
+  .btn {
+    display: inline-block; background: var(--orange); color: #fff; border: none;
+    border-radius: var(--radius); padding: 12px 20px; font-size: 1rem; font-weight: 600;
+    cursor: pointer; text-decoration: none; text-align: center;
+  }
+  .btn:hover { background: var(--orange-dark); }
+  .btn.block { display: block; width: 100%; }
+  .btn.ghost {
+    background: transparent; color: var(--orange); border: 2px solid var(--orange);
+  }
+  .step-item { border-left: 4px solid var(--orange); }
+  .step-item.done { border-left-color: var(--ok); opacity: .75; }
+  .step-item.done h3 { text-decoration: line-through; }
+  .cmd {
+    display: flex; align-items: center; gap: 8px;
+    background: #263238; color: #ECEFF1; border-radius: 10px;
+    padding: 10px 12px; margin: 8px 0; font-family: Consolas, "Courier New", monospace;
+    font-size: .82rem; overflow-x: auto; white-space: nowrap;
+  }
+  .cmd button {
+    flex-shrink: 0; background: var(--orange); color: #fff; border: none;
+    border-radius: 8px; padding: 6px 10px; cursor: pointer; font-size: .78rem;
+  }
+  ul.plain { margin-left: 18px; }
+  ul.plain li { margin-bottom: 4px; }
+  .progress-wrap { background: var(--border); border-radius: 999px; height: 10px; overflow: hidden; margin: 8px 0; }
+  .progress-bar { background: var(--ok); height: 100%; width: 0%; transition: width .3s; }
+  details summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+  a { color: var(--orange); }
+  .highlight { background: #FFF1E6; border-radius: 8px; padding: 10px 12px; margin: 8px 0; font-size: .9rem; }
+  @media (prefers-color-scheme: dark) { .highlight { background: #3A2415; } }
+  footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🚗 AA Fix<small>Xiaomi Android Auto sorun giderici</small></h1>
+  <span class="badge" id="deviceBadge">Kontrol ediliyor…</span>
+</header>
+
+<main>
+
+  <!-- ==================== 1. CİHAZ ALGILAMA ==================== -->
+  <section>
+    <div class="card">
+      <h2>Cihaz bilgisi</h2>
+      <p id="deviceInfo" class="muted">Tarayıcı bilgilerinden okunuyor…</p>
+      <p class="muted" style="margin-top:6px">
+        Bu bilgi yaklaşıktır (tarayıcı üzerinden tam model okunamaz).
+      </p>
+    </div>
+  </section>
+
+  <!-- ==================== 2. SİHİRBAZ ==================== -->
+  <section>
+    <h2>Sorun giderme sihirbazı</h2>
+    <p class="muted" style="margin-bottom:10px">
+      Soruları cevapla, sana özel çözüm planı oluşturalım.
+    </p>
+
+    <div class="card">
+      <h3>1) Android Auto'yu nasıl bağlıyorsun?</h3>
+      <button class="choice" data-q="connection" data-v="usb">
+        🔌 USB kablo ile
+        <small>Telefonu kablo ile arabaya bağlıyorum</small>
+      </button>
+      <button class="choice" data-q="connection" data-v="wireless">
+        📶 Kablosuz (Wi-Fi/Bluetooth)
+        <small>Arabayla kablosuz bağlanıyorum</small>
+      </button>
+      <button class="choice" data-q="connection" data-v="both">
+        🔌📶 İkisini de kullanıyorum
+      </button>
+    </div>
+
+    <div class="card">
+      <h3>2) En sık karşılaştığın sorun ne?</h3>
+      <button class="choice" data-q="symptom" data-v="never">
+        ❌ Hiç bağlanmıyor
+        <small>Araba Android Auto'yu hiç görmüyor</small>
+      </button>
+      <button class="choice" data-q="symptom" data-v="drops">
+        📉 Bağlanıyor ama kopuyor
+        <small>Bir süre sonra bağlantı kesiliyor</small>
+      </button>
+      <button class="choice" data-q="symptom" data-v="searchdrops">
+        🗺️ Arama sırasında kopuyor
+        <small>Navigasyon/telefon görüşmesi esnasında kesiliyor</small>
+      </button>
+      <button class="choice" data-q="symptom" data-v="crash">
+        💥 Çöküyor / uygulama durduruluyor
+        <small>Android Auto kendiliğinden kapanıyor</small>
+      </button>
+      <button class="choice" data-q="symptom" data-v="notvisible">
+        👀 Araba ekranında görünmüyor
+        <small>Bağlantı var ama araba seçeneği sunmuyor</small>
+      </button>
+    </div>
+
+    <div class="card">
+      <h3>3) Geliştirici seçeneklerin açık mı?</h3>
+      <button class="choice" data-q="dev" data-v="yes">Evet, açık</button>
+      <button class="choice" data-q="dev" data-v="no">Hayır / emin değilim</button>
+    </div>
+  </section>
+
+  <!-- ==================== 3. PLAN ==================== -->
+  <section id="planSection" style="display:none">
+    <h2>📋 Sana özel çözüm planın</h2>
+    <div class="card">
+      <p id="planSummary" class="muted"></p>
+      <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+      <p class="muted"><span id="progressText">0 / 0</span> adım tamamlandı — işaretlemelerin tarayıcıda saklanır.</p>
+    </div>
+    <div id="planList"></div>
+    <button class="btn ghost block" id="resetBtn" style="margin-top:8px">Planı sıfırla</button>
+  </section>
+
+  <!-- ==================== 4. ADB KOMUTLARI ==================== -->
+  <section>
+    <h2>⌨️ ADB komutları (ileri seviye, PC gerekir)</h2>
+    <p class="muted" style="margin-bottom:10px">
+      Bilgisayara <b>Android Studio Platform-Tools</b> kur, telefonda
+      <b>Geliştirici seçenekleri → USB hata ayıklama</b>'yı aç, komutları kopyala-yapıştır çalıştır.
+      <a href="https://developer.android.com/tools/releases/platform-tools" target="_blank" rel="noopener">ADB indir</a>
+    </p>
+    <div class="card">
+      <h3>MIUI optimizasyonunu kapat</h3>
+      <div class="cmd"><code>adb shell settings put secure miui_optimization 0</code><button data-copy>Kopyala</button></div>
+    </div>
+    <div class="card">
+      <h3>Pil muafiyet listesine ekle</h3>
+      <div class="cmd"><code>adb shell dumpsys deviceidle whitelist +com.google.android.projection.gearhead</code><button data-copy>Kopyala</button></div>
+    </div>
+    <div class="card">
+      <h3>USB yapılandırmasını MTP yap</h3>
+      <div class="cmd"><code>adb shell settings put secure usb_default_config mtp</code><button data-copy>Kopyala</button></div>
+    </div>
+    <div class="card">
+      <h3>Android Auto önbelleğini sıfırla</h3>
+      <div class="cmd"><code>adb shell pm clear com.google.android.projection.gearhead</code><button data-copy>Kopyala</button></div>
+      <p class="muted">⚠️ Uygulama verilerini siler, ayarları yeniden yapman gerekir.</p>
+    </div>
+  </section>
+
+  <!-- ==================== 5. UYGULAMA TANITIMI ==================== -->
+  <section>
+    <div class="card" style="border:2px solid var(--orange)">
+      <h2>🤖 Düzeltmeleri otomatik uygula</h2>
+      <p>
+        AA Fix Android uygulaması, yukarıdaki düzeltmelerin <b>çoğunu tek dokunuşla kendisi uygular</b>
+        (Shizuku ile, PC gerekmeden). Web sitesi bu yüzden sadece rehberlik edebilir —
+        sistem ayarlarını değiştiremez.
+      </p>
+      <p class="muted" style="margin:8px 0">
+        Uygulama yayına alındığında buradaki bağlantı aktifleşecek.
+      </p>
+      <span class="btn ghost" style="pointer-events:none;opacity:.6">Yakında Google Play'de</span>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  AA Fix • Bağımsız bir yardım projesidir; Xiaomi veya Google ile bağlantılı değildir.
+</footer>
+
+<script>
+"use strict";
+
+/* ==================== CİHAZ ALGILAMA ==================== */
+(function detectDevice() {
+  var ua = navigator.userAgent || "";
+  var androidMatch = ua.match(/Android\s(\d+(?:\.\d+)?)/);
+  var modelMatch = ua.match(/;\s([^;)]+?)\s(?:Build\/|[)]\s*AppleWebKit)/);
+  var isXiaomi = /Xiaomi|Redmi|POCO/i.test(ua);
+  var badge = document.getElementById("deviceBadge");
+  var info = document.getElementById("deviceInfo");
+
+  var androidVer = androidMatch ? androidMatch[1] : null;
+  var model = modelMatch ? modelMatch[1].trim() : null;
+
+  if (!androidVer) {
+    badge.textContent = "Masaüstü / bilinmeyen";
+    badge.className = "badge warn";
+    info.textContent = "Bu site telefonunda açıldığında cihaz bilgisi otomatik okunur. " +
+      "Şimdilik sorulara cevap vererek devam edebilirsin.";
+  } else {
+    var text = "Tahmini cihaz: " + (model || "Bilinmiyor") + " • Android " + androidVer;
+    if (isXiaomi) {
+      text += " • Xiaomi ailesi ✔";
+      badge.textContent = "Xiaomi • Android " + androidVer;
+      badge.className = "badge ok";
+    } else {
+      badge.textContent = "Android " + androidVer;
+      badge.className = "badge";
+    }
+    if (parseFloat(androidVer) < 11) {
+      text += "  ⚠️ Kablosuz Android Auto ve Shizuku için Android 11+ gerekir.";
+    }
+    info.textContent = text;
+  }
+})();
+
+/* ==================== ÇÖZÜM ADIMI VERİTABANI ==================== */
+var STEPS = {
+  battery: {
+    title: "Android Auto'ya 'Sınırsız' pil izni ver",
+    why: "MIUI, arka plandaki uygulamaları pil tasarrufu için öldürür. Bağlantı kopmalarının 1 numaralı sebebidir.",
+    how: [
+      "Ayarlar → Uygulamalar → Tüm uygulamalar → Android Auto",
+      "Pil → 'Sınırsız' (veya 'Kısıtlama yok') seç"
+    ]
+  },
+  bgrestrict: {
+    title: "Arka plan kısıtlamasını kaldır",
+    why: "MIUI 'Arka plan kısıtlaması' Android Auto'nun çalışmasını durdurabilir.",
+    how: [
+      "Ayarlar → Uygulamalar → Uygulama izinleri → Arka plan kısıtlaması",
+      "Android Auto'yu bul → 'Sınırlama yok' yap"
+    ]
+  },
+  permissions: {
+    title: "Tüm izinleri ver",
+    why: "Konum ve mikrofon izinleri olmadan Android Auto bağlanmaz veya navigasyon çalışmaz.",
+    how: [
+      "Ayarlar → Uygulamalar → Android Auto → İzinler",
+      "Konum: 'Her zaman izin ver'; Mikrofon: 'İzin ver'"
+    ]
+  },
+  gmsupdate: {
+    title: "Google Play Hizmetleri ve Android Auto'yu güncelle",
+    why: "Eski sürümlerde bağlantı protokolü hataları bulunur.",
+    how: [
+      "Play Store'u aç → sağ üst profil simgesi → 'Uygulamalar ve cihaz'",
+      "Güncellemeleri denetle; Android Auto ve Play Hizmetleri listelenirse güncelle"
+    ]
+  },
+  cache: {
+    title: "Android Auto önbelleğini temizle",
+    why: "Bozuk önbellek bağlantı el sıkışmasını engelleyebilir.",
+    how: [
+      "Ayarlar → Uygulamalar → Android Auto → Depolama",
+      "'Önbelleği temizle' (VERİLERİ silme, sadece önbellek)"
+    ]
+  },
+  usbMtp: {
+    title: "Varsayılan USB yapılandırmasını MTP yap",
+    why: "Telefon 'sadece şarj' modunda takılırsa araba veriyi görmez.",
+    how: [
+      "Ayarlar → Ek ayarlar → Geliştirici seçenekleri",
+      "'Varsayılan USB yapılandırması' → 'Dosya aktarımı (MTP)'"
+    ],
+    adb: "adb shell settings put secure usb_default_config mtp"
+  },
+  cable: {
+    title: "Veri aktaran USB kablosu kullan",
+    why: "Ucuz kablolar yalnızca şarj iletir; veri hattı yoktur.",
+    how: [
+      "Orijinal veya 'veri aktarımı destekli' bir kablo dene",
+      "Kabloyu takınca bildirim panelinde USB bildirimi görünmeli — dokunup 'Dosya aktarımı' seç"
+    ]
+  },
+  usbDebug: {
+    title: "USB hata ayıklamayı aç ve yetkiyi onayla",
+    why: "Bazı arabalar bağlantı için telefonun hata ayıklama el sıkışmasını bekler.",
+    how: [
+      "Geliştirici seçenekleri → 'USB hata ayıklama' → Aç",
+      "Kablo takılınca çıkan 'Bu bilgisayara güven?' bildirimine 'Tamam' de"
+    ]
+  },
+  wireless5: {
+    title: "Telefon ve arabanın aynı 5 GHz Wi-Fi ağına bağlan",
+    why: "Kablosuz Android Auto yalnızca 5 GHz'de stabil çalışır; 2.4 GHz'de kopar.",
+    how: [
+      "Arabanın ekranından Android Auto kablosuz kurulumunu başlat",
+      "Telefonu aynı ağın 5 GHz seçeneğine bağla",
+      "İlk eşleşmeden sonra telefon otomatik bağlanır"
+    ]
+  },
+  wifiPower: {
+    title: "Wi-Fi güç tasarrufunu kapat",
+    why: "MIUI, ekran kapalıyken Wi-Fi'yi kapatıp kablosuz bağlantıyı düşürebilir.",
+    how: [
+      "Ayarlar → Bağlantı ve paylaşım → Özel özellikler",
+      "'Wi-Fi performans modu' → 'Performans modu'",
+      "'Wi-Fi bağlantısını otomatik kapatma' kapalı olmalı"
+    ]
+  },
+  btPair: {
+    title: "Bluetooth eşleşmesini sıfırla",
+    why: "Bozuk eşleşme profili elle bağlantıyı engeller.",
+    how: [
+      "Ayarlar → Bluetooth → araba profilini unut",
+      "Arabanın ekranından da telefonu kaldır",
+      "Yeniden eşleştir"
+    ]
+  },
+  miuiOpt: {
+    title: "MIUI optimizasyonunu kapat",
+    why: "MIUI'nin 'MIUI optimizasyonu' anahtarı Android Auto protokolünü bozabilir.",
+    how: [
+      "Geliştirici seçeneklerinin EN ALTINA in",
+      "'MIUI optimizasyonunu kullan' kapalı olsun (yoksa: 'Geliştirici seçeneklerini geri yükle' deyip)",
+      "Değişiklik için telefon yeniden başlatma isteyecektir"
+    ],
+    adb: "adb shell settings put secure miui_optimization 0"
+  },
+  whitelist: {
+    title: "Android Auto'yu pil muafiyet listesine ekle (ADB)",
+    why: "MIUI'nin derin pil kısıtlamalarını atlar.",
+    how: [
+      "PC'de ADB kurulu olmalı, komutu kopyalayıp terminalde çalıştır"
+    ],
+    adb: "adb shell dumpsys deviceidle whitelist +com.google.android.projection.gearhead"
+  },
+  gameMode: {
+    title: "Oyun modu / Arama modunu kapat",
+    why: "MIUI bu modlarda arka plan bağlantılarını askıya alır.",
+    how: [
+      "Ayarlar → Ek ayarlar → Oyun Turbo → Android Auto'yı istisna listesine ekle",
+      "Arama sırasında 'Arama modu' otomatik açılırsa kapat"
+    ]
+  },
+  aaReinstall: {
+    title: "Android Auto'yu kaldır ve yeniden kur",
+    why: "Bozuk kurulumlar çökme ve bağlantı hatalarına yol açar.",
+    how: [
+      "Ayarlar → Uygulamalar → Android Auto → Kaldır (güncelleştirmeleri kaldır)",
+      "Play Store'dan yeniden kur, açılış izinlerini tekrar ver"
+    ],
+    adb: "adb shell pm clear com.google.android.projection.gearhead"
+  }
+};
+
+/* ==================== KURAL MOTORU ==================== */
+function buildPlan(a) {
+  var ids = ["battery", "bgrestrict", "permissions", "gmsupdate", "cache"];
+
+  if (a.connection === "usb" || a.connection === "both" || a.symptom === "never" || a.symptom === "notvisible") {
+    ids.push("usbMtp", "cable");
+  }
+  if (a.symptom === "never" || a.symptom === "notvisible") {
+    ids.push("usbDebug");
+  }
+  if (a.connection === "wireless" || a.connection === "both") {
+    ids.push("wireless5", "wifiPower", "btPair");
+  }
+  if (a.symptom === "drops" || a.symptom === "searchdrops" || a.symptom === "crash") {
+    ids.push("miuiOpt", "whitelist");
+  }
+  if (a.symptom === "searchdrops") {
+    ids.push("gameMode");
+  }
+  if (a.symptom === "crash" || a.symptom === "never") {
+    ids.push("aaReinstall");
+  }
+  return ids;
+}
+
+/* ==================== DURUM & DEPOLAMA ==================== */
+var answers = { connection: null, symptom: null, dev: null };
+var currentPlan = [];
+var LS_PLAN = "aafix.plan.v1";
+var LS_CHECKS = "aafix.checks.v1";
+
+var planSection = document.getElementById("planSection");
+var planList = document.getElementById("planList");
+var planSummary = document.getElementById("planSummary");
+var progressBar = document.getElementById("progressBar");
+var progressText = document.getElementById("progressText");
+
+function loadChecks() {
+  try { return JSON.parse(localStorage.getItem(LS_CHECKS) || "{}"); }
+  catch (e) { return {}; }
+}
+function saveChecks(c) {
+  try { localStorage.setItem(LS_CHECKS, JSON.stringify(c)); } catch (e) {}
+}
+
+function savePlan() {
+  try { localStorage.setItem(LS_PLAN, JSON.stringify(answers)); } catch (e) {}
+}
+function loadPlan() {
+  try {
+    var a = JSON.parse(localStorage.getItem(LS_PLAN) || "null");
+    if (a && a.connection && a.symptom && a.dev) return a;
+  } catch (e) {}
+  return null;
+}
+
+/* ==================== SEÇİM BUTONLARI ==================== */
+document.querySelectorAll(".choice").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var q = btn.getAttribute("data-q");
+    var v = btn.getAttribute("data-v");
+    answers[q] = v;
+    // görsel seçim
+    document.querySelectorAll('.choice[data-q="' + q + '"]').forEach(function (b) {
+      b.classList.toggle("selected", b === btn);
+    });
+    savePlan();
+    renderPlan();
+  });
+});
+
+/* ==================== PLAN RENDER ==================== */
+var SYMPTOM_LABELS = {
+  never: "hiç bağlanmıyor",
+  drops: "bağlanıyor ama kopuyor",
+  searchdrops: "arama sırasında kopuyor",
+  crash: "çöküyor",
+  notvisible: "araba ekranında görünmüyor"
+};
+
+function renderPlan() {
+  if (!answers.connection || !answers.symptom || !answers.dev) {
+    planSection.style.display = "none";
+    return;
+  }
+  planSection.style.display = "block";
+  currentPlan = buildPlan(answers);
+  planSummary.textContent = "Bağlantı: " + answers.connection +
+    " • Sorun: " + SYMPTOM_LABELS[answers.symptom] +
+    " • Geliştirici seçenekleri: " + (answers.dev === "yes" ? "açık" : "kapalı/em");
+
+  var checks = loadChecks();
+  planList.innerHTML = "";
+
+  currentPlan.forEach(function (id, index) {
+    var s = STEPS[id];
+    var done = !!checks[id];
+    var card = document.createElement("div");
+    card.className = "card step-item" + (done ? " done" : "");
+
+    var html = "<h3>" + (index + 1) + ". " + s.title + "</h3>" +
+      "<p class='muted'>" + s.why + "</p><ul class='plain'>";
+    s.how.forEach(function (line) { html += "<li>" + line + "</li>"; });
+    html += "</ul>";
+    if (s.adb) {
+      html += "<div class='cmd'><code>" + s.adb + "</code>" +
+        "<button data-copy>Kopyala</button></div>";
+    }
+    html += "<label style='display:flex;align-items:center;gap:8px;margin-top:8px'>" +
+      "<input type='checkbox' data-step='" + id + "'" + (done ? " checked" : "") + "> " +
+      "<b>Bu adımı yaptım</b></label>";
+    card.innerHTML = html;
+    planList.appendChild(card);
+  });
+
+  updateProgress();
+  bindCopyButtons();
+}
+
+planList.addEventListener("change", function (e) {
+  var el = e.target;
+  if (el && el.matches("input[data-step]")) {
+    var checks = loadChecks();
+    if (el.checked) { checks[el.getAttribute("data-step")] = true; }
+    else { delete checks[el.getAttribute("data-step")]; }
+    saveChecks(checks);
+    var card = el.closest(".step-item");
+    if (card) card.classList.toggle("done", el.checked);
+    updateProgress();
+  }
+});
+
+function updateProgress() {
+  var checks = loadChecks();
+  var doneCount = currentPlan.filter(function (id) { return checks[id]; }).length;
+  var total = currentPlan.length || 1;
+  progressBar.style.width = Math.round((doneCount / total) * 100) + "%";
+  progressText.textContent = doneCount + " / " + currentPlan.length;
+}
+
+document.getElementById("resetBtn").addEventListener("click", function () {
+  try { localStorage.removeItem(LS_CHECKS); } catch (e) {}
+  renderPlan();
+});
+
+/* ==================== KOPYALA DÜĞMELERİ ==================== */
+function bindCopyButtons() {
+  document.querySelectorAll("[data-copy]").forEach(function (btn) {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", function () {
+      var code = btn.parentElement.querySelector("code").textContent;
+      function done() {
+        var old = btn.textContent;
+        btn.textContent = "✓ Kopyalandı";
+        setTimeout(function () { btn.textContent = old; }, 1500);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(done);
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = code;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        done();
+      }
+    });
+  });
+}
+
+/* ==================== BAŞLANGIÇ ==================== */
+(function init() {
+  var saved = loadPlan();
+  if (saved) {
+    answers = saved;
+    document.querySelectorAll(".choice").forEach(function (b) {
+      b.classList.toggle("selected", b.getAttribute("data-v") === answers[b.getAttribute("data-q")]);
+    });
+  }
+  renderPlan();
+  bindCopyButtons();
+})();
+
+/* ==================== PWA: ÇEVRİMDIŞI DESTEK ==================== */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
